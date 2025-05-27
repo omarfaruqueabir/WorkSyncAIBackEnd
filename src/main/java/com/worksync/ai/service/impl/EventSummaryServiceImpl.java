@@ -1,5 +1,6 @@
 package com.worksync.ai.service.impl;
 
+import com.worksync.ai.client.OpenRouterClient;
 import com.worksync.ai.dto.AppUsageAggregationDTO;
 import com.worksync.ai.dto.SecurityAggregationDTO;
 import com.worksync.ai.dto.AlertAggregationDTO;
@@ -11,12 +12,6 @@ import com.worksync.ai.service.EventSummaryService;
 import com.worksync.ai.mapper.EventAggregationMapper;
 import com.worksync.ai.mapper.EventSummaryMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.embedding.Embedding;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -39,10 +34,7 @@ public class EventSummaryServiceImpl implements EventSummaryService {
     private EventSummaryRepository summaryRepository;
 
     @Autowired
-    private ChatModel chatClient;
-
-    @Autowired
-    private EmbeddingModel embeddingClient;
+    private OpenRouterClient openRouterClient;
 
     @Autowired
     private EventAggregationMapper aggregationMapper;
@@ -113,11 +105,9 @@ public class EventSummaryServiceImpl implements EventSummaryService {
                 });
             }
 
-            // Generate summary using OpenAI
-            String prompt = String.format("""
-                Analyze the following employee activity data and provide a concise, professional summary.
-                Focus on key patterns, potential concerns, and notable achievements.
-                
+            // Generate summary using OpenRouter
+            String systemPrompt = "Analyze the following employee activity data and provide a concise, professional summary. Focus on key patterns, potential concerns, and notable achievements.";
+            String userPrompt = String.format("""
                 Employee: %s
                 Time Period: %s to %s
                 
@@ -129,11 +119,16 @@ public class EventSummaryServiceImpl implements EventSummaryService {
                 endTime.format(TIME_FORMATTER),
                 context.toString());
 
-            ChatResponse response = chatClient.call(new Prompt(prompt));
-            String summaryText = response.getResult().getOutput().getText();
+            String summaryText = openRouterClient.chatCompletion(systemPrompt, userPrompt);
+            if (summaryText == null) {
+                summaryText = "Summary generation failed for employee " + employeeName;
+            }
 
             // Generate embedding for the summary
-            float[] embedding = embeddingClient.embed(summaryText);
+            float[] embedding = openRouterClient.generateEmbedding(summaryText);
+            if (embedding == null) {
+                embedding = new float[0]; // Empty embedding as fallback
+            }
 
             // Create DTO
             EventSummaryDTO dto = new EventSummaryDTO(

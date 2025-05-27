@@ -1,5 +1,5 @@
 server:
-  port: 9090
+  port: 9091
   servlet:
     context-path: /
   compression:
@@ -50,32 +50,82 @@ spring:
           group: work-sync-group
 
   ai:
+    retry:
+      max-attempts: 3
+      initial-interval: 1000
+      multiplier: 2.0
+      max-interval: 10000
     openai:
-      api-key: ${OPENAI_API_KEY}
+      api-key: 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
+      base-url: https://openrouter.ai/api/v1
       chat:
-        model: gpt-3.5-turbo
+        model: openai/gpt-4
+        options:
+          temperature: 0.7
+          max-tokens: 1000
+          http-headers:
+            HTTP-Referer: "http://localhost:9091"
+            X-Title: "WorkSync AI"
       embedding:
-        model: text-embedding-ada-002
+        model: openai/text-embedding-ada-002
+        options:
+          dimensions: 1536
+          http-headers:
+            HTTP-Referer: "http://localhost:9091"
+            X-Title: "WorkSync AI"
     vectorstore:
       elasticsearch:
-        index-name: worksync-summaries
         initialize-schema: true
-        similarity: cosine
+        index-name: worksync-summaries
         dimensions: 1536
-        host: localhost
-        port: 9200
-        protocol: http
+        similarity: cosine
 
   elasticsearch:
-    uris: localhost:9200
+    uris: http://localhost:9200
     connection-timeout: 5s
     socket-timeout: 10s
     username: ${ELASTICSEARCH_USERNAME:}
     password: ${ELASTICSEARCH_PASSWORD:}
-    restclient.sniffer.interval: 10m
-    restclient.sniffer.delay-after-failure: 30s
+    restclient:
+      sniffer:
+        interval: 10m
+        delay-after-failure: 30s
     repositories:
       enabled: true
+
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: summary-scheduler-
+    execution:
+      pool:
+        core-size: 8
+        max-size: 16
+        queue-capacity: 100
+        keep-alive: 60s
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/worksync
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  data:
+    elasticsearch:
+      repositories:
+        enabled: true
+      cluster-name: docker-cluster
+      cluster-nodes: localhost:9200
 
 kafka:
   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -91,12 +141,22 @@ priority-processing:
 chatbot:
   rag:
     fallback:
-      similarity-threshold: 0.7
+      similarity-threshold: 0.2
       message: "I don't have enough data to answer that question. Please try asking something else."
+
+# Optimized summarization configuration
+summarization:
+  # Use GPT-4 for better summarization quality
+  model: "openai/gpt-4"
+  # Lower temperature for more focused, consistent summaries
+  temperature: 0.3
+  # Limit tokens for concise summaries
+  max-tokens: 800
 
 summary:
   generation:
     interval: 3600
+    enabled: true
 
 management:
   endpoints:
@@ -117,6 +177,8 @@ logging:
     org.elasticsearch: DEBUG
     org.springframework.ai: DEBUG
     org.springframework.kafka.support.serializer.JsonDeserializer: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 #    org.apache.kafka.clients.consumer: DEBUG
 #    org.springframework.cloud.stream: DEBUG
 #    org.springframework.integration: DEBUG

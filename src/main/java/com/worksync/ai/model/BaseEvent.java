@@ -12,6 +12,7 @@ import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Data
@@ -24,9 +25,9 @@ public class BaseEvent {
     @JsonProperty("eventId")
     private String eventId;
 
-    @Field(type = FieldType.Date)
+    @Field(type = FieldType.Date, format = {}, pattern = "uuuu-MM-dd'T'HH:mm:ss.SSSSSS")
     @JsonProperty("timestamp")
-    private Instant timestamp;
+    private LocalDateTime timestamp;
 
     @Field(type = FieldType.Keyword)
     @JsonProperty("employeeId")

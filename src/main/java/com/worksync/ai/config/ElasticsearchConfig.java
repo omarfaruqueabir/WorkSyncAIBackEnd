@@ -7,18 +7,22 @@ import org.springframework.data.elasticsearch.client.elc.ElasticsearchConfigurat
 import org.springframework.data.elasticsearch.core.convert.ElasticsearchCustomConversions;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.convert.ReadingConverter;
+import org.springframework.data.convert.WritingConverter;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
+import java.util.Arrays;
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Configuration
-@EnableElasticsearchRepositories(basePackages = "com.worksync.ai.repository")
+//@EnableElasticsearchRepositories(basePackages = "com.worksync.ai.repository")
 public class ElasticsearchConfig extends ElasticsearchConfiguration {
 
     @Value("${spring.elasticsearch.uris}")
-    private String[] elasticsearchUris;
+    private String elasticsearchUrl;
 
     @Value("${spring.elasticsearch.connection-timeout:5s}")
     private String connectionTimeout;
@@ -35,7 +39,7 @@ public class ElasticsearchConfig extends ElasticsearchConfiguration {
     @Override
     public ClientConfiguration clientConfiguration() {
         var builder = ClientConfiguration.builder()
-            .connectedTo(elasticsearchUris)
+            .connectedTo(elasticsearchUrl.replace("http://", ""))
             .withConnectTimeout(Duration.parse("PT" + connectionTimeout))
             .withSocketTimeout(Duration.parse("PT" + socketTimeout));
 
@@ -49,7 +53,25 @@ public class ElasticsearchConfig extends ElasticsearchConfiguration {
 
     @Bean
     public ElasticsearchCustomConversions elasticsearchCustomConversions() {
-        return new ElasticsearchCustomConversions(Collections.emptyList());
+        return new ElasticsearchCustomConversions(
+            Arrays.asList(new LocalDateTimeToStringConverter(), new StringToLocalDateTimeConverter())
+        );
+    }
+
+    @WritingConverter
+    static class LocalDateTimeToStringConverter implements Converter<LocalDateTime, String> {
+        @Override
+        public String convert(LocalDateTime source) {
+            return source.format(DateTimeFormatter.ISO_DATE_TIME);
+        }
+    }
+
+    @ReadingConverter
+    static class StringToLocalDateTimeConverter implements Converter<String, LocalDateTime> {
+        @Override
+        public LocalDateTime convert(String source) {
+            return LocalDateTime.parse(source, DateTimeFormatter.ISO_DATE_TIME);
+        }
     }
 
     @Bean

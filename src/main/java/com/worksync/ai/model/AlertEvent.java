@@ -23,4 +23,8 @@ public class AlertEvent extends BaseEvent {
     @Field(type = FieldType.Keyword)
     @JsonProperty("severity")
     private String severity;
+    
+    @Field(type = FieldType.Text)
+    @JsonProperty("description")
+    private String description;
 } 

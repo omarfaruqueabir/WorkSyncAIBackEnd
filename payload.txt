@@ -5,12 +5,12 @@
     "employeeName": "John Doe",
     "pcId": "pc123",
     "eventType": "APP_USAGE",
-    "priority": "HIGH",
+    "priority": "CRITICAL",
     "appName": "Chrome",
     "durationInSeconds": 3600,
     "category": "productivity",
     "description": "Browser usage tracking",
-    "timestamp": "2024-03-27T01:05:17.887Z",
+     "timestamp": "2025-05-27T17:20:11",
     "metadata": {
         "url": "https://github.com",
         "tabCount": 5
@@ -35,20 +35,21 @@
     }
 }
 // ALERT
-{
-    "employeeId": "emp123",
-    "employeeName": "John Doe",
-    "pcId": "pc123",
-    "eventType": "ALERT",
-    "priority": "CRITICAL",
-    "category": "system_health",
-    "description": "High CPU usage detected",
-    "timestamp": "2024-03-27T01:05:17.887Z",
-    "alertType": "PERFORMANCE",
-    "severity": "WARNING",
-    "metadata": {
-        "cpuUsage": 95.5,
-        "memoryUsage": 82.3,
-        "processName": "chrome.exe"
+    {
+        "employeeId": "emp123",
+        "employeeName": "John Doe",
+        "pcId": "pc123",
+        "eventType": "ALERT",
+         "appName": "Chrome",
+        "priority": "CRITICAL",
+        "category": "system_health",
+        "description": "High CPU usage detected",
+        "timestamp": "2025-05-27T14:40:11",
+        "alertType": "PERFORMANCE",
+        "severity": "WARNING",
+        "metadata": {
+            "cpuUsage": 95.5,
+            "memoryUsage": 82.3,
+            "processName": "chrome.exe"
+        }
     }
-}
