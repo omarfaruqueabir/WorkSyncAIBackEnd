@@ -1,6 +1,6 @@
 package com.worksync.ai.service.impl;
 
-import com.worksync.ai.client.OllamaClient;
+import com.worksync.ai.client.OpenRouterClient;
 import com.worksync.ai.model.dto.*;
 import com.worksync.ai.model.enums.QueryType;
 import com.worksync.ai.service.ChatbotService;
@@ -25,7 +25,16 @@ public class ChatbotServiceImpl implements ChatbotService {
     private QueryAnalyzerService queryAnalyzerService;
 
     @Autowired
-    private OllamaClient ollamaClient;
+    private OpenRouterClient openRouterClient;
+
+    @Value("${spring.ai.openai.chat.model:openai/gpt-4}")
+    private String model;
+
+    @Value("${spring.ai.openai.chat.options.temperature:0.3}")
+    private double temperature;
+
+    @Value("${spring.ai.openai.chat.options.max-tokens:1000}")
+    private int maxTokens;
 
     @Value("${chatbot.rag.fallback.similarity-threshold:0.2}")
     private double similarityThreshold;
@@ -145,9 +154,12 @@ public class ChatbotServiceImpl implements ChatbotService {
             query
         );
 
-        return ollamaClient.generateCompletion(
+        return openRouterClient.chatCompletionWithModel(
+            model,
             "You are a data analysis expert. Provide detailed, specific answers based on the data.",
-            prompt
+            prompt,
+            temperature,
+            maxTokens
         );
     }
 
@@ -203,12 +215,17 @@ public class ChatbotServiceImpl implements ChatbotService {
                 "8. Format your response with clear headings and bullet points for specific details\n\n" +
                 "Provide a direct, accurate answer based on the summary data above.";
 
-            String aiResponse = ollamaClient.generateCompletion(
-                "You are an expert AI assistant for employee monitoring and security analysis. " +
+            String systemPrompt = "You are an expert AI assistant for employee monitoring and security analysis. " +
                 "Your task is to extract and present SPECIFIC information from employee activity summaries. " +
                 "When users ask about specific details (URLs, app names, timestamps, security incidents, etc.), " +
-                "you MUST extract the EXACT information from the summaries provided.",
-                userPrompt
+                "you MUST extract the EXACT information from the summaries provided.";
+
+            String aiResponse = openRouterClient.chatCompletionWithModel(
+                model,
+                systemPrompt,
+                userPrompt,
+                temperature,
+                maxTokens
             );
 
             if (aiResponse != null && !aiResponse.trim().isEmpty()) {
