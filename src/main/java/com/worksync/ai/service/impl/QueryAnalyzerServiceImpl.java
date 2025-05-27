@@ -1,7 +1,7 @@
 package com.worksync.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.worksync.ai.client.OpenRouterClient;
+import com.worksync.ai.client.OllamaClient;
 import com.worksync.ai.model.dto.QueryAnalysis;
 import com.worksync.ai.model.enums.QueryType;
 import com.worksync.ai.service.QueryAnalyzerService;
@@ -18,7 +18,7 @@ import java.util.Map;
 public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
 
     @Autowired
-    private OpenRouterClient openRouterClient;
+    private OllamaClient ollamaClient;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -62,7 +62,7 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
     public QueryAnalysis analyzeQuery(String query) {
         try {
             String analysisPrompt = String.format(QUERY_ANALYSIS_PROMPT, query);
-            String analysisResponse = openRouterClient.chatCompletion(
+            String analysisResponse = ollamaClient.generateCompletion(
                 "You are a query analysis expert. Provide only the JSON response, no additional text.",
                 analysisPrompt
             );
@@ -73,8 +73,11 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
             }
 
             try {
+                // Extract JSON from the response (Ollama might include additional text)
+                String jsonResponse = extractJsonFromResponse(analysisResponse);
+                
                 // Parse the JSON response
-                Map<String, Object> analysisMap = objectMapper.readValue(analysisResponse, Map.class);
+                Map<String, Object> analysisMap = objectMapper.readValue(jsonResponse, Map.class);
 
                 return QueryAnalysis.builder()
                     .queryType(QueryType.valueOf((String) analysisMap.get("queryType")))
@@ -96,6 +99,18 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
             log.error("Error analyzing query: {}", e.getMessage(), e);
             return getDefaultAnalysis(query);
         }
+    }
+
+    private String extractJsonFromResponse(String response) {
+        // Find the first '{' and last '}'
+        int start = response.indexOf('{');
+        int end = response.lastIndexOf('}');
+        
+        if (start >= 0 && end >= 0 && end > start) {
+            return response.substring(start, end + 1);
+        }
+        
+        throw new IllegalArgumentException("No valid JSON found in response");
     }
 
     private QueryAnalysis getDefaultAnalysis(String query) {

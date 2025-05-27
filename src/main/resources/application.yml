@@ -183,3 +183,9 @@ logging:
 #    org.springframework.cloud.stream: DEBUG
 #    org.springframework.integration: DEBUG
 #    org.springframework.kafka: DEBUG
+
+# Ollama Configuration
+ollama:
+  base-url: http://localhost:11434
+  model: llama2
+  timeout: 30000

@@ -1,6 +1,6 @@
 package com.worksync.ai.service.impl;
 
-import com.worksync.ai.client.OpenRouterClient;
+import com.worksync.ai.client.OllamaClient;
 import com.worksync.ai.model.dto.*;
 import com.worksync.ai.model.enums.QueryType;
 import com.worksync.ai.service.ChatbotService;
@@ -25,7 +25,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     private QueryAnalyzerService queryAnalyzerService;
 
     @Autowired
-    private OpenRouterClient openRouterClient;
+    private OllamaClient ollamaClient;
 
     @Value("${chatbot.rag.fallback.similarity-threshold:0.2}")
     private double similarityThreshold;
@@ -145,12 +145,9 @@ public class ChatbotServiceImpl implements ChatbotService {
             query
         );
 
-        return openRouterClient.chatCompletionWithModel(
-            "openai/gpt-4",
+        return ollamaClient.generateCompletion(
             "You are a data analysis expert. Provide detailed, specific answers based on the data.",
-            prompt,
-            0.3,
-            1000
+            prompt
         );
     }
 
@@ -182,7 +179,6 @@ public class ChatbotServiceImpl implements ChatbotService {
 
     private String generateAIProcessedResponse(String query, List<SummaryMatch> matches) {
         try {
-            // Prepare context from matched summaries
             StringBuilder contextBuilder = new StringBuilder();
             contextBuilder.append("User Query: ").append(query).append("\n\n");
             contextBuilder.append("Available Summary Data:\n");
@@ -207,37 +203,12 @@ public class ChatbotServiceImpl implements ChatbotService {
                 "8. Format your response with clear headings and bullet points for specific details\n\n" +
                 "Provide a direct, accurate answer based on the summary data above.";
 
-            // Use GPT-4 for better accuracy in information extraction
-            String aiResponse = openRouterClient.chatCompletionWithModel(
-                "openai/gpt-4",  // Use GPT-4 instead of Llama
+            String aiResponse = ollamaClient.generateCompletion(
                 "You are an expert AI assistant for employee monitoring and security analysis. " +
                 "Your task is to extract and present SPECIFIC information from employee activity summaries. " +
                 "When users ask about specific details (URLs, app names, timestamps, security incidents, etc.), " +
-                "you MUST extract the EXACT information from the summaries provided. " +
-                
-                "CRITICAL RULES: " +
-                "- NEVER refer to 'Summary 1', 'Summary 2', etc. Instead, provide the actual information directly " +
-                "- For security-related queries: Extract and provide the EXACT URLs, domain names, IP addresses mentioned " +
-                "- For application queries: Provide the EXACT application names, durations, and usage details " +
-                "- For incident queries: Provide the EXACT timestamps, alert types, severity levels, and descriptions " +
-                "- If a specific URL is mentioned in the content, include it verbatim in your response " +
-                "- Always quote exact values, names, URLs, and timestamps from the source material " +
-                
-                "RESPONSE FORMAT: " +
-                "- Start with the direct answer to the user's question " +
-                "- Include all relevant specific details (URLs, times, names, etc.) " +
-                "- Provide context about the incident or activity " +
-                "- Use clear, professional language " +
-                "- If information is not available, state that clearly " +
-                
-                "EXAMPLE: If asked about malware URLs, respond like: " +
-                "'John accessed the malicious website suspicious-site.com at 2025-05-27T19:30:12. " +
-                "This site was identified as a phishing threat with a risk score of 9.2/10 and was blocked by the security system.' " +
-                
-                "Remember: Extract EXACT details from the content, never invent information, and avoid generic summary references.",
-                userPrompt,
-                0.3,  // Lower temperature for more factual responses
-                1000  // Allow more tokens for detailed responses
+                "you MUST extract the EXACT information from the summaries provided.",
+                userPrompt
             );
 
             if (aiResponse != null && !aiResponse.trim().isEmpty()) {
