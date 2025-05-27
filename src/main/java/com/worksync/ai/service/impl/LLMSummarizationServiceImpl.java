@@ -1,6 +1,6 @@
 package com.worksync.ai.service.impl;
 
-import com.worksync.ai.client.OllamaClient;
+import com.worksync.ai.client.OpenRouterClient;
 import com.worksync.ai.model.AggregatedEventBundle;
 import com.worksync.ai.model.AlertEvent;
 import com.worksync.ai.model.AppUsageEvent;
@@ -21,10 +21,16 @@ import java.util.stream.Collectors;
 public class LLMSummarizationServiceImpl implements LLMSummarizationService {
 
     @Autowired
-    private OllamaClient ollamaClient;
+    private OpenRouterClient openRouterClient;
 
-    @Value("${ollama.model:llama2}")
+    @Value("${spring.ai.openai.chat.model:openai/gpt-4}")
     private String model;
+
+    @Value("${spring.ai.openai.chat.options.temperature:0.3}")
+    private double temperature;
+
+    @Value("${spring.ai.openai.chat.options.max-tokens:1000}")
+    private int maxTokens;
 
     private static final String SYSTEM_PROMPT = 
         "You are an expert at creating comprehensive, detailed summaries of employee computer activity. " +
@@ -71,16 +77,22 @@ public class LLMSummarizationServiceImpl implements LLMSummarizationService {
             activityData
         );
 
-        // Generate summary using Ollama
+        // Generate summary using OpenRouter with GPT-4
         try {
-            String summary = ollamaClient.generateCompletion(SYSTEM_PROMPT, userPrompt);
+            String summary = openRouterClient.chatCompletionWithModel(
+                model,
+                SYSTEM_PROMPT,
+                userPrompt,
+                temperature,
+                maxTokens
+            );
             
             if (summary != null && !summary.trim().isEmpty()) {
                 log.debug("Generated comprehensive summary for employee {}: {} chars", 
                     bundle.getEmployeeId(), summary.length());
                 return summary.trim();
             } else {
-                log.warn("Ollama returned empty response for employee {}", bundle.getEmployeeId());
+                log.warn("OpenRouter returned empty response for employee {}", bundle.getEmployeeId());
                 return generateComprehensiveFallbackSummary(bundle);
             }
         } catch (Exception e) {

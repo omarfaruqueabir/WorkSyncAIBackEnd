@@ -1,12 +1,13 @@
 package com.worksync.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.worksync.ai.client.OllamaClient;
+import com.worksync.ai.client.OpenRouterClient;
 import com.worksync.ai.model.dto.QueryAnalysis;
 import com.worksync.ai.model.enums.QueryType;
 import com.worksync.ai.service.QueryAnalyzerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -18,10 +19,19 @@ import java.util.Map;
 public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
 
     @Autowired
-    private OllamaClient ollamaClient;
+    private OpenRouterClient openRouterClient;
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Value("${spring.ai.openai.chat.model:openai/gpt-4}")
+    private String model;
+
+    @Value("${spring.ai.openai.chat.options.temperature:0.3}")
+    private double temperature;
+
+    @Value("${spring.ai.openai.chat.options.max-tokens:1000}")
+    private int maxTokens;
 
     private static final String QUERY_ANALYSIS_PROMPT = """
         Analyze the following user query and classify it according to these criteria:
@@ -62,9 +72,12 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
     public QueryAnalysis analyzeQuery(String query) {
         try {
             String analysisPrompt = String.format(QUERY_ANALYSIS_PROMPT, query);
-            String analysisResponse = ollamaClient.generateCompletion(
+            String analysisResponse = openRouterClient.chatCompletionWithModel(
+                model,
                 "You are a query analysis expert. Provide only the JSON response, no additional text.",
-                analysisPrompt
+                analysisPrompt,
+                temperature,
+                maxTokens
             );
 
             if (analysisResponse == null || analysisResponse.trim().isEmpty()) {
@@ -73,7 +86,7 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
             }
 
             try {
-                // Extract JSON from the response (Ollama might include additional text)
+                // Extract JSON from the response
                 String jsonResponse = extractJsonFromResponse(analysisResponse);
                 
                 // Parse the JSON response
