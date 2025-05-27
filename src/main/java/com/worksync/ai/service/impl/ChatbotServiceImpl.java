@@ -27,13 +27,13 @@ public class ChatbotServiceImpl implements ChatbotService {
     @Autowired
     private OpenRouterClient openRouterClient;
 
-    @Value("${spring.ai.openai.chat.model:openai/gpt-4}")
+    @Value("${spring.ai.openai.chat.model:deepseek/deepseek-prover-v2:free}")
     private String model;
 
     @Value("${spring.ai.openai.chat.options.temperature:0.3}")
     private double temperature;
 
-    @Value("${spring.ai.openai.chat.options.max-tokens:1000}")
+    @Value("${spring.ai.openai.chat.options.max-tokens:2000}")
     private int maxTokens;
 
     @Value("${chatbot.rag.fallback.similarity-threshold:0.2}")
@@ -78,6 +78,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 
             // Fetch relevant data based on analysis
             List<SummaryMatch> matches = fetchRelevantData(request.query(), analysis);
+            log.debug("Found {} relevant matches", matches.size());
 
             if (matches.isEmpty()) {
                 return ChatbotResponse.builder()
@@ -88,19 +89,21 @@ public class ChatbotServiceImpl implements ChatbotService {
             }
 
             // Process the data based on query type
-            String response = switch (analysis.getQueryType()) {
-                case SIMPLE_RETRIEVAL -> handleSimpleRetrieval(matches, request.query());
-                case ANALYTICAL, STATISTICAL -> handleAnalyticalQuery(matches, request.query(), analysis);
-                case TEMPORAL -> handleTemporalQuery(matches, request.query(), analysis);
-                case COMPARATIVE -> handleComparativeQuery(matches, request.query(), analysis);
-                case AGGREGATIVE -> handleAggregativeQuery(matches, request.query(), analysis);
-                default -> handleSimpleRetrieval(matches, request.query());
-            };
+            String response = processQueryByType(matches, request.query(), analysis);
+            
+            if (response == null || response.trim().isEmpty()) {
+                log.warn("Generated response was empty, using fallback");
+                return ChatbotResponse.builder()
+                    .success(true)
+                    .message(fallbackMessage)
+                    .matches(List.of())
+                    .build();
+            }
 
             return ChatbotResponse.builder()
                 .success(true)
                 .message(response)
-                .matches(List.of()) // We don't return matches since we're providing processed response
+                .matches(matches)
                 .build();
 
         } catch (Exception e) {
@@ -113,6 +116,90 @@ public class ChatbotServiceImpl implements ChatbotService {
         }
     }
 
+    private String processQueryByType(List<SummaryMatch> matches, String query, QueryAnalysis analysis) {
+        String contextData = formatMatchesForAnalysis(matches);
+        String systemPrompt = getSystemPromptForQueryType(analysis.getQueryType());
+        
+        String userPrompt = buildDetailedPrompt(matches, query, analysis);
+        
+        try {
+            String response = openRouterClient.chatCompletionWithModel(
+                model,
+                systemPrompt,
+                userPrompt,
+                temperature,
+                maxTokens
+            );
+            
+            if (response != null && !response.trim().isEmpty()) {
+                log.debug("Generated response for query type {}: {} chars", 
+                    analysis.getQueryType(), response.length());
+                return response.trim();
+            }
+            
+            log.warn("Empty response from OpenRouter for query type: {}", analysis.getQueryType());
+            return null;
+            
+        } catch (Exception e) {
+            log.error("Error generating response: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private String getSystemPromptForQueryType(QueryType queryType) {
+        return switch (queryType) {
+            case ANALYTICAL, STATISTICAL -> 
+                "You are a data analysis expert specializing in employee activity data. " +
+                "Provide detailed statistical analysis and insights from the data.";
+            case TEMPORAL -> 
+                "You are a temporal data analysis expert. Focus on time-based patterns " +
+                "and trends in employee activities.";
+            case COMPARATIVE -> 
+                "You are a comparative analysis expert. Focus on comparing different " +
+                "aspects of employee activities and highlighting key differences.";
+            case AGGREGATIVE -> 
+                "You are a data aggregation expert. Combine and summarize employee " +
+                "activity data to provide meaningful insights.";
+            default -> 
+                "You are an expert AI assistant for employee monitoring and security analysis. " +
+                "Extract and present specific information from employee activity summaries.";
+        };
+    }
+
+    private String buildDetailedPrompt(List<SummaryMatch> matches, String query, QueryAnalysis analysis) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("User Query: ").append(query).append("\n\n");
+        prompt.append("Context and Requirements:\n");
+        
+        if (analysis.getTimeframe() != null) {
+            prompt.append("- Time Period: ").append(analysis.getTimeframe()).append("\n");
+        }
+        if (analysis.getRequiredFields() != null && !analysis.getRequiredFields().isEmpty()) {
+            prompt.append("- Required Information: ").append(String.join(", ", analysis.getRequiredFields())).append("\n");
+        }
+        if (analysis.isRequiresAggregation()) {
+            prompt.append("- Aggregation Required: Yes\n");
+        }
+        
+        prompt.append("\nAvailable Data:\n");
+        matches.forEach(match -> {
+            prompt.append("---\n");
+            prompt.append("Employee: ").append(match.employeeId()).append("\n");
+            prompt.append("Relevance Score: ").append(String.format("%.2f", match.similarity())).append("\n");
+            prompt.append("Data: ").append(match.summary()).append("\n\n");
+        });
+
+        prompt.append("\nInstructions:\n");
+        prompt.append("1. Extract SPECIFIC information from the summaries\n");
+        prompt.append("2. Include exact details (timestamps, durations, app names, URLs)\n");
+        prompt.append("3. Format the response clearly with sections and bullet points\n");
+        prompt.append("4. If comparing data, highlight key differences\n");
+        prompt.append("5. For security events, include all relevant threat details\n");
+        prompt.append("6. Provide concrete examples from the data\n");
+        
+        return prompt.toString();
+    }
+
     private List<SummaryMatch> fetchRelevantData(String query, QueryAnalysis analysis) {
         // Get initial matches based on vector similarity
         List<SummaryMatch> matches = vectorStorageService.similaritySearch(
@@ -120,62 +207,29 @@ public class ChatbotServiceImpl implements ChatbotService {
             10 // Default to 10 results
         );
 
+        log.debug("Initial vector search returned {} matches", matches.size());
+
         // Apply additional filters based on analysis
         if (analysis.getEmployeeId() != null) {
             matches = matches.stream()
                 .filter(m -> m.employeeId().equals(analysis.getEmployeeId()))
                 .collect(Collectors.toList());
+            log.debug("After employee filter: {} matches", matches.size());
         }
 
         // Apply keyword filters if specified
         if (analysis.getFilterKeywords() != null && !analysis.getFilterKeywords().isEmpty()) {
             matches = filterSummariesByKeywords(matches, analysis.getFilterKeywords());
+            log.debug("After keyword filter: {} matches", matches.size());
         }
 
+        // Filter out low similarity matches
+        matches = matches.stream()
+            .filter(m -> m.similarity() >= similarityThreshold)
+            .collect(Collectors.toList());
+        log.debug("After similarity threshold filter: {} matches", matches.size());
+
         return matches;
-    }
-
-    private String handleSimpleRetrieval(List<SummaryMatch> matches, String query) {
-        // For simple retrieval, use the existing response generation approach
-        return generateAIProcessedResponse(query, matches);
-    }
-
-    private String handleAnalyticalQuery(List<SummaryMatch> matches, String query, QueryAnalysis analysis) {
-        String contextData = formatMatchesForAnalysis(matches);
-        String metrics = String.join(", ", analysis.getRequiredFields());
-        
-        String prompt = String.format(
-            ANALYTICAL_PROMPT_TEMPLATE,
-            analysis.getQueryType(),
-            metrics,
-            analysis.getTimeframe() != null ? analysis.getTimeframe() : "all time",
-            analysis.isRequiresAggregation() ? "required" : "not required",
-            contextData,
-            query
-        );
-
-        return openRouterClient.chatCompletionWithModel(
-            model,
-            "You are a data analysis expert. Provide detailed, specific answers based on the data.",
-            prompt,
-            temperature,
-            maxTokens
-        );
-    }
-
-    private String handleTemporalQuery(List<SummaryMatch> matches, String query, QueryAnalysis analysis) {
-        // Similar to analytical but with focus on temporal aspects
-        return handleAnalyticalQuery(matches, query, analysis);
-    }
-
-    private String handleComparativeQuery(List<SummaryMatch> matches, String query, QueryAnalysis analysis) {
-        // Similar to analytical but with focus on comparison
-        return handleAnalyticalQuery(matches, query, analysis);
-    }
-
-    private String handleAggregativeQuery(List<SummaryMatch> matches, String query, QueryAnalysis analysis) {
-        // Similar to analytical but with focus on aggregation
-        return handleAnalyticalQuery(matches, query, analysis);
     }
 
     private String formatMatchesForAnalysis(List<SummaryMatch> matches) {
@@ -189,62 +243,6 @@ public class ChatbotServiceImpl implements ChatbotService {
         return builder.toString();
     }
 
-    private String generateAIProcessedResponse(String query, List<SummaryMatch> matches) {
-        try {
-            StringBuilder contextBuilder = new StringBuilder();
-            contextBuilder.append("User Query: ").append(query).append("\n\n");
-            contextBuilder.append("Available Summary Data:\n");
-
-            for (int i = 0; i < Math.min(matches.size(), 5); i++) {
-                SummaryMatch match = matches.get(i);
-                contextBuilder.append("--- Summary ").append(i + 1).append(" (Employee: ")
-                    .append(match.employeeId()).append(", Similarity: ")
-                    .append(String.format("%.3f", match.similarity())).append(") ---\n");
-                contextBuilder.append(match.summary()).append("\n\n");
-            }
-
-            String userPrompt = contextBuilder.toString() + 
-                "\nINSTRUCTIONS:\n" +
-                "1. Read the user's query carefully and identify what SPECIFIC information they want\n" +
-                "2. Search through ALL the summary data for the exact details requested\n" +
-                "3. Extract and present the SPECIFIC information (URLs, app names, timestamps, etc.)\n" +
-                "4. Quote the relevant parts of the summaries that contain the requested information\n" +
-                "5. If asking about security events, include URLs, threat types, and timestamps\n" +
-                "6. If asking about applications, include app names, durations, and usage details\n" +
-                "7. Be precise and factual - don't say information is missing if it's clearly present in the summaries\n" +
-                "8. Format your response with clear headings and bullet points for specific details\n\n" +
-                "Provide a direct, accurate answer based on the summary data above.";
-
-            String systemPrompt = "You are an expert AI assistant for employee monitoring and security analysis. " +
-                "Your task is to extract and present SPECIFIC information from employee activity summaries. " +
-                "When users ask about specific details (URLs, app names, timestamps, security incidents, etc.), " +
-                "you MUST extract the EXACT information from the summaries provided.";
-
-            String aiResponse = openRouterClient.chatCompletionWithModel(
-                model,
-                systemPrompt,
-                userPrompt,
-                temperature,
-                maxTokens
-            );
-
-            if (aiResponse != null && !aiResponse.trim().isEmpty()) {
-                log.debug("Generated AI-processed response for query: {}", query);
-                return aiResponse.trim();
-            }
-
-            return null;
-
-        } catch (Exception e) {
-            log.error("Error generating AI-processed response: {}", e.getMessage(), e);
-            return null;
-        }
-    }
-
-    /**
-     * Helper method to filter summaries based on specific keywords or criteria
-     * This can be used for additional filtering if needed
-     */
     private List<SummaryMatch> filterSummariesByKeywords(List<SummaryMatch> matches, List<String> keywords) {
         if (keywords == null || keywords.isEmpty()) {
             return matches;
