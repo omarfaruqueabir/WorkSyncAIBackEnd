@@ -1,0 +1,123 @@
+server:
+  port: 9090
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+spring:
+  application:
+    name: worksync-backend
+
+  cloud:
+    function:
+      definition: registeredAppUsageConsumer;registeredAlertConsumer;registeredSecurityConsumer;vectorStore
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+          consumer-properties:
+            spring.json.trusted.packages: "com.worksync.ai.model,com.worksync.ai.model.enums"
+      default:
+        consumer:
+          configuration:
+            key.deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            value.deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+            spring.json.trusted.packages: "com.worksync.ai.model,com.worksync.ai.model.enums"
+            spring.json.use.type.headers: false
+            spring.json.value.default.type: "com.worksync.ai.model.AppUsageEvent"
+      bindings:
+        registeredAppUsageConsumer-in-0:
+          destination: appUsage-topic
+          group: work-sync-group
+          content-type: application/json
+          consumer:
+            configuration:
+              key.deserializer: org.apache.kafka.common.serialization.StringDeserializer
+              value.deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+              spring.json.trusted.packages: "com.worksync.ai.model,com.worksync.ai.model.enums"
+              spring.json.value.default.type: "com.worksync.ai.model.AppUsageEvent"
+              spring.json.use.type.headers: false
+        registeredAlertConsumer-in-0:
+          destination: alert-topic
+          group: work-sync-group
+        vectorStore-in-0:
+          destination: vector-topic
+          group: work-sync-group
+        registeredSecurityConsumer-in-0:
+          destination: security-topic
+          group: work-sync-group
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        model: gpt-3.5-turbo
+      embedding:
+        model: text-embedding-ada-002
+    vectorstore:
+      elasticsearch:
+        index-name: worksync-summaries
+        initialize-schema: true
+        similarity: cosine
+        dimensions: 1536
+        host: localhost
+        port: 9200
+        protocol: http
+
+  elasticsearch:
+    uris: localhost:9200
+    connection-timeout: 5s
+    socket-timeout: 10s
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    restclient.sniffer.interval: 10m
+    restclient.sniffer.delay-after-failure: 30s
+    repositories:
+      enabled: true
+
+kafka:
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  consumer:
+    group-id: worksync-ai
+    auto-offset-reset: earliest
+
+priority-processing:
+  critical: 0
+  high: 100000
+  normal: 200000
+
+chatbot:
+  rag:
+    fallback:
+      similarity-threshold: 0.7
+      message: "I don't have enough data to answer that question. Please try asking something else."
+
+summary:
+  generation:
+    interval: 3600
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    elasticsearch:
+      enabled: true
+
+logging:
+  level:
+    com.worksync.ai: DEBUG
+    org.springframework: INFO
+    org.elasticsearch: DEBUG
+    org.springframework.ai: DEBUG
+    org.springframework.kafka.support.serializer.JsonDeserializer: DEBUG
+#    org.apache.kafka.clients.consumer: DEBUG
+#    org.springframework.cloud.stream: DEBUG
+#    org.springframework.integration: DEBUG
+#    org.springframework.kafka: DEBUG

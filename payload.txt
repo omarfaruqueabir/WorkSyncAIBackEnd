@@ -1,0 +1,54 @@
+
+//APP USAGE
+{
+    "employeeId": "emp123",
+    "employeeName": "John Doe",
+    "pcId": "pc123",
+    "eventType": "APP_USAGE",
+    "priority": "HIGH",
+    "appName": "Chrome",
+    "durationInSeconds": 3600,
+    "category": "productivity",
+    "description": "Browser usage tracking",
+    "timestamp": "2024-03-27T01:05:17.887Z",
+    "metadata": {
+        "url": "https://github.com",
+        "tabCount": 5
+    }
+}
+// SECURITY
+{
+    "employeeId": "emp123",
+    "employeeName": "John Doe",
+    "pcId": "pc123",
+    "eventType": "SECURITY",
+    "priority": "CRITICAL",
+    "category": "unauthorized_access",
+    "description": "Multiple failed login attempts detected",
+    "timestamp": "2024-03-27T01:05:17.887Z",
+    "threatLevel": "HIGH",
+    "sourceIp": "192.168.1.100",
+    "metadata": {
+        "attemptCount": 5,
+        "lastAttemptTime": "2024-03-27T01:05:15.000Z",
+        "location": "Remote Access"
+    }
+}
+// ALERT
+{
+    "employeeId": "emp123",
+    "employeeName": "John Doe",
+    "pcId": "pc123",
+    "eventType": "ALERT",
+    "priority": "CRITICAL",
+    "category": "system_health",
+    "description": "High CPU usage detected",
+    "timestamp": "2024-03-27T01:05:17.887Z",
+    "alertType": "PERFORMANCE",
+    "severity": "WARNING",
+    "metadata": {
+        "cpuUsage": 95.5,
+        "memoryUsage": 82.3,
+        "processName": "chrome.exe"
+    }
+}
