@@ -54,30 +54,49 @@ public class OpenRouterClient {
             headers.set("HTTP-Referer", "http://localhost:9091");
             headers.set("X-Title", "WorkSync AI");
 
-            ChatCompletionRequest request = ChatCompletionRequest.builder()
-                .model(model)
-                .messages(List.of(
-                    new Message("system", systemPrompt),
-                    new Message("user", userPrompt)
-                ))
-                .maxTokens(maxTokens)
-                .temperature(temperature)
-                .build();
+            // Log the API key being used (first 10 chars)
+            String apiKeyPrefix = apiKey.length() > 10 ? apiKey.substring(0, 10) : apiKey;
+            log.debug("Using API key prefix: {}...", apiKeyPrefix);
 
-            HttpEntity<ChatCompletionRequest> entity = new HttpEntity<>(request, headers);
+            Map<String, Object> requestBody = Map.of(
+                "model", model,
+                "messages", List.of(
+                    Map.of(
+                        "role", "system",
+                        "content", systemPrompt
+                    ),
+                    Map.of(
+                        "role", "user",
+                        "content", userPrompt
+                    )
+                ),
+                "max_tokens", maxTokens,
+                "temperature", temperature
+            );
+
+            // Log the request body for debugging
+            log.debug("Request body: {}", objectMapper.writeValueAsString(requestBody));
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
             log.debug("Sending request to OpenRouter API with model {}: {}", model, url);
-            ResponseEntity<ChatCompletionResponse> response = restTemplate.postForEntity(
-                url, entity, ChatCompletionResponse.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                url, entity, String.class);
+
+            log.debug("Response status: {}", response.getStatusCode());
+            log.debug("Response body: {}", response.getBody());
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                ChatCompletionResponse responseBody = response.getBody();
-                if (responseBody.getChoices() != null && !responseBody.getChoices().isEmpty()) {
-                    return responseBody.getChoices().get(0).getMessage().getContent();
+                Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), Map.class);
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) responseMap.get("choices");
+                if (choices != null && !choices.isEmpty()) {
+                    Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+                    return (String) message.get("content");
                 }
             }
 
-            log.error("Unexpected response from OpenRouter API: {}", response.getStatusCode());
+            log.error("Unexpected response from OpenRouter API: {} with body: {}", 
+                response.getStatusCode(), response.getBody());
             return null;
 
         } catch (Exception e) {
