@@ -62,35 +62,47 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
     public QueryAnalysis analyzeQuery(String query) {
         try {
             String analysisPrompt = String.format(QUERY_ANALYSIS_PROMPT, query);
-            String analysisResponse = openRouterClient.chatCompletionWithModel(
-                "openai/gpt-4",
+            String analysisResponse = openRouterClient.chatCompletion(
                 "You are a query analysis expert. Provide only the JSON response, no additional text.",
-                analysisPrompt,
-                0.1, // Low temperature for consistent results
-                500  // Response size limit
+                analysisPrompt
             );
 
-            // Parse the JSON response
-            Map<String, Object> analysisMap = objectMapper.readValue(analysisResponse, Map.class);
+            if (analysisResponse == null || analysisResponse.trim().isEmpty()) {
+                log.warn("Received empty analysis response for query: {}", query);
+                return getDefaultAnalysis(query);
+            }
 
-            return QueryAnalysis.builder()
-                .queryType(QueryType.valueOf((String) analysisMap.get("queryType")))
-                .filterKeywords((List<String>) analysisMap.get("filterKeywords"))
-                .requiresAggregation((Boolean) analysisMap.get("requiresAggregation"))
-                .timeframe((String) analysisMap.get("timeframe"))
-                .employeeId((String) analysisMap.get("employeeId"))
-                .requiredFields((List<String>) analysisMap.get("requiredFields"))
-                .extractionCriteria((Map<String, Object>) analysisMap.get("extractionCriteria"))
-                .build();
+            try {
+                // Parse the JSON response
+                Map<String, Object> analysisMap = objectMapper.readValue(analysisResponse, Map.class);
+
+                return QueryAnalysis.builder()
+                    .queryType(QueryType.valueOf((String) analysisMap.get("queryType")))
+                    .filterKeywords((List<String>) analysisMap.get("filterKeywords"))
+                    .requiresAggregation((Boolean) analysisMap.get("requiresAggregation"))
+                    .timeframe((String) analysisMap.get("timeframe"))
+                    .employeeId((String) analysisMap.get("employeeId"))
+                    .requiredFields((List<String>) analysisMap.get("requiredFields"))
+                    .extractionCriteria((Map<String, Object>) analysisMap.get("extractionCriteria"))
+                    .build();
+
+            } catch (Exception e) {
+                log.error("Error parsing analysis response: {}", e.getMessage());
+                log.debug("Raw response: {}", analysisResponse);
+                return getDefaultAnalysis(query);
+            }
 
         } catch (Exception e) {
             log.error("Error analyzing query: {}", e.getMessage(), e);
-            // Return a default simple retrieval analysis
-            return QueryAnalysis.builder()
-                .queryType(QueryType.SIMPLE_RETRIEVAL)
-                .filterKeywords(Arrays.asList(query.toLowerCase().split("\\s+")))
-                .requiresAggregation(false)
-                .build();
+            return getDefaultAnalysis(query);
         }
+    }
+
+    private QueryAnalysis getDefaultAnalysis(String query) {
+        return QueryAnalysis.builder()
+            .queryType(QueryType.SIMPLE_RETRIEVAL)
+            .filterKeywords(Arrays.asList(query.toLowerCase().split("\\s+")))
+            .requiresAggregation(false)
+            .build();
     }
 } 
