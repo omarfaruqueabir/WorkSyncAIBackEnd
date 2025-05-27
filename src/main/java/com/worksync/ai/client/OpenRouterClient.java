@@ -20,6 +20,14 @@ import java.util.HashSet;
 @Component
 public class OpenRouterClient {
 
+    public static final String MODEL_CLAUDE = "anthropic/claude-2";
+    public static final String MODEL_PALM = "google/palm-2-chat-bison";
+    public static final String MODEL_LLAMA = "meta-llama/llama-2-70b-chat";
+    public static final String MODEL_MISTRAL = "mistralai/mistral-7b-instruct";
+    
+    // Default to Mistral as it's fast and reliable
+    private static final String DEFAULT_MODEL = MODEL_MISTRAL;
+
     @Value("${spring.ai.openai.api-key}")
     private String apiKey;
 
@@ -36,7 +44,7 @@ public class OpenRouterClient {
 
     public String chatCompletion(String systemPrompt, String userPrompt) {
         return chatCompletionWithModel(
-            "openai/gpt-4", 
+            DEFAULT_MODEL, 
             systemPrompt, 
             userPrompt, 
             0.7, 

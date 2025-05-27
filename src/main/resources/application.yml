@@ -56,10 +56,10 @@ spring:
       multiplier: 2.0
       max-interval: 10000
     openai:
-      api-key: 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
+      api-key: ${OPENROUTER_API_KEY:your-api-key-here}
       base-url: https://openrouter.ai/api/v1
       chat:
-        model: openai/gpt-4
+        model: mistralai/mistral-7b-instruct
         options:
           temperature: 0.7
           max-tokens: 1000
@@ -67,7 +67,7 @@ spring:
             HTTP-Referer: "http://localhost:9091"
             X-Title: "WorkSync AI"
       embedding:
-        model: openai/text-embedding-ada-002
+        model: mistralai/mistral-7b-instruct
         options:
           dimensions: 1536
           http-headers:
