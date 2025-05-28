@@ -191,26 +191,29 @@ public class ChatbotServiceImpl implements ChatbotService {
             prompt.append("Data: ").append(match.summary()).append("\n");
         });
 
-        // Simple formatting instructions
+        // Response formatting instructions
         prompt.append("""
-            
-            Format your response with these sections:
+
+            Important Instructions:
+            1. ONLY answer what was specifically asked in the query
+            2. Do not include additional information unless explicitly requested
+            3. Keep the response focused and concise
+            4. For ID/name queries, only return the specific ID or name
+            5. For usage queries, only return the specific usage asked about
+            6. Skip sections that aren't relevant to the specific query
+
+            Format your response using these sections only if relevant to the query:
             ### SUMMARY
-            2-3 sentence overview
-            
-            ### KEY_DETAILS
-            • Important points as bullets
-            
-            ### SPECIFICS
-            Details by category with bullets
-            
+            One clear sentence answering the query
+
+            ### DETAILS
+            Only if additional details were specifically requested
+
             ### METRICS
-            Numbers and stats if relevant
-            
+            Only if specific numbers/stats were requested
+
             ### TIMELINE
-            Time-based events if applicable
-            
-            Note: Use ### for headers, • for bullets, keep it concise, and skip sections if not relevant.
+            Only if time-based information was requested
             """);
         
         return prompt.toString();
