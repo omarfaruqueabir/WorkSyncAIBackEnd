@@ -81,11 +81,7 @@ public class ChatbotServiceImpl implements ChatbotService {
             log.debug("Found {} relevant matches", matches.size());
 
             if (matches.isEmpty()) {
-                return ChatbotResponse.builder()
-                    .success(true)
-                    .message(fallbackMessage)
-                    .matches(List.of())
-                    .build();
+                return handleNoMatches(request.query(), analysis);
             }
 
             // Process the data based on query type
@@ -93,11 +89,7 @@ public class ChatbotServiceImpl implements ChatbotService {
             
             if (response == null || response.trim().isEmpty()) {
                 log.warn("Generated response was empty, using fallback");
-                return ChatbotResponse.builder()
-                    .success(true)
-                    .message(fallbackMessage)
-                    .matches(List.of())
-                    .build();
+                return handleNoMatches(request.query(), analysis);
             }
 
             return ChatbotResponse.builder()
@@ -279,5 +271,60 @@ public class ChatbotServiceImpl implements ChatbotService {
                     summaryText.contains(keyword.toLowerCase()));
             })
             .collect(Collectors.toList());
+    }
+
+    private ChatbotResponse handleNoMatches(String query, QueryAnalysis analysis) {
+        try {
+            String systemPrompt = """
+                You are an AI assistant helping with employee activity queries.
+                When no matching data is found, provide a clear and specific response about what was not found.
+                Focus on the specific elements from the query (employee, application, activity type, etc.).
+                """;
+
+            String userPrompt = String.format("""
+                Query: %s
+                
+                Analysis:
+                - Employee ID: %s
+                - Employee Name: %s
+                - Required Fields: %s
+                - Time Period: %s
+                
+                No matching data was found in the system.
+                Explain specifically what information was looked for but not found.
+                Format the response in a clear, direct way using the ### SUMMARY format.
+                """,
+                query,
+                analysis.getEmployeeId(),
+                analysis.getEmployeeName(),
+                analysis.getRequiredFields() != null ? String.join(", ", analysis.getRequiredFields()) : "none",
+                analysis.getTimeframe() != null ? analysis.getTimeframe() : "not specified"
+            );
+
+            String response = openRouterClient.chatCompletionWithModel(
+                model,
+                systemPrompt,
+                userPrompt,
+                temperature,
+                maxTokens
+            );
+
+            if (response != null && !response.trim().isEmpty()) {
+                return ChatbotResponse.builder()
+                    .success(true)
+                    .message(response.trim())
+                    .matches(List.of())
+                    .build();
+            }
+        } catch (Exception e) {
+            log.error("Error generating no-match response: {}", e.getMessage(), e);
+        }
+
+        // Ultimate fallback if everything fails
+        return ChatbotResponse.builder()
+            .success(true)
+            .message(fallbackMessage)
+            .matches(List.of())
+            .build();
     }
 } 
