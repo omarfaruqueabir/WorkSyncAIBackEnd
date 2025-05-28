@@ -16,5 +16,6 @@ public class QueryAnalysis {
     private boolean requiresAggregation;
     private String timeframe;
     private String employeeId;
+    private String employeeName;
     private List<String> requiredFields;
 } 

@@ -47,7 +47,13 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
            - Identify if aggregation is needed
            - Extract time-related information
            - Identify specific metrics or measurements needed
-           - Determine if employee-specific filtering is needed
+           - Determine if employee filtering is needed
+        
+        3. Employee Identification Rules:
+           - If query contains a numeric ID (e.g., "513", "employee 123"), use "employeeId"
+           - If query contains a name (e.g., "Asfaq", "John Smith"), use "employeeName"
+           - Do not convert names to IDs or vice versa
+           - If no employee is mentioned, set both to null
         
         Respond with a JSON object containing:
         {
@@ -55,7 +61,8 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
             "filterKeywords": ["keyword1", "keyword2"],
             "requiresAggregation": boolean,
             "timeframe": "specific timeframe or null",
-            "employeeId": "employee identifier if specified",
+            "employeeId": "numeric ID if specified (e.g., '513'), null if not specified or if name is used instead",
+            "employeeName": "employee name if specified (e.g., 'Asfaq'), null if not specified or if ID is used instead",
             "requiredFields": ["field1", "field2"],
             "extractionCriteria": {
                 "metric": "usage_duration",
@@ -64,6 +71,14 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
                 "orderDirection": "desc"
             }
         }
+
+        Examples:
+        1. Query: "Show me Asfaq's activity"
+           → Use employeeName: "Asfaq", employeeId: null
+        2. Query: "What did employee 513 do today?"
+           → Use employeeId: "513", employeeName: null
+        3. Query: "Show all security alerts"
+           → Use employeeId: null, employeeName: null
         
         Query to analyze: %s
         """;
@@ -98,6 +113,7 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
                     .requiresAggregation((Boolean) analysisMap.get("requiresAggregation"))
                     .timeframe((String) analysisMap.get("timeframe"))
                     .employeeId((String) analysisMap.get("employeeId"))
+                    .employeeName((String) analysisMap.get("employeeName"))
                     .requiredFields((List<String>) analysisMap.get("requiredFields"))
                     .extractionCriteria((Map<String, Object>) analysisMap.get("extractionCriteria"))
                     .build();
