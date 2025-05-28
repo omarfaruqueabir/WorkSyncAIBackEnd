@@ -13,6 +13,7 @@ public class QueryAnalysis {
     private QueryType queryType;
     private List<String> filterKeywords;
     private Map<String, Object> extractionCriteria;
+    private Map<String, Object> searchContext;
     private boolean requiresAggregation;
     private String timeframe;
     private String employeeId;

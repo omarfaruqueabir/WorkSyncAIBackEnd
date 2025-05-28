@@ -55,15 +55,32 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
            - Do not convert names to IDs or vice versa
            - If no employee is mentioned, set both to null
         
+        4. Time Analysis:
+           - Extract specific time periods (e.g., "last hour", "today", "past week")
+           - For relative times, specify the relation (e.g., "last", "past", "previous")
+           - For absolute times, include the full timestamp
+           - If no time is specified, set to null
+        
+        5. Application/Activity Focus:
+           - Identify specific applications or activities mentioned
+           - Extract usage metrics being asked about (time, frequency, etc.)
+           - Note any specific features or aspects of interest
+        
         Respond with a JSON object containing:
         {
             "queryType": "QUERY_TYPE",
             "filterKeywords": ["keyword1", "keyword2"],
             "requiresAggregation": boolean,
             "timeframe": "specific timeframe or null",
-            "employeeId": "numeric ID if specified (e.g., '513'), null if not specified or if name is used instead",
-            "employeeName": "employee name if specified (e.g., 'Asfaq'), null if not specified or if ID is used instead",
+            "employeeId": "numeric ID if specified, null if not specified or if name is used instead",
+            "employeeName": "employee name if specified, null if not specified or if ID is used instead",
             "requiredFields": ["field1", "field2"],
+            "searchContext": {
+                "applications": ["app1", "app2"],
+                "metrics": ["usage_time", "frequency"],
+                "timeContext": "relative or absolute time specification",
+                "activityType": "type of activity being queried"
+            },
             "extractionCriteria": {
                 "metric": "usage_duration",
                 "aggregation": "sum",
@@ -74,11 +91,15 @@ public class QueryAnalyzerServiceImpl implements QueryAnalyzerService {
 
         Examples:
         1. Query: "Show me Asfaq's activity"
-           → Use employeeName: "Asfaq", employeeId: null
+           → Basic employee activity query
         2. Query: "What did employee 513 do today?"
-           → Use employeeId: "513", employeeName: null
+           → Temporal query with employee ID
         3. Query: "Show all security alerts"
-           → Use employeeId: null, employeeName: null
+           → Simple retrieval for specific event type
+        4. Query: "Total usage time of postman in the last hour"
+           → Temporal aggregation query for specific application
+        5. Query: "Who used VSCode the most yesterday?"
+           → Statistical query with temporal and application context
         
         Query to analyze: %s
         """;
