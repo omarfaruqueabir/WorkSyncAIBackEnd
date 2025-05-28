@@ -175,63 +175,51 @@ public class ChatbotServiceImpl implements ChatbotService {
     private String buildDetailedPrompt(List<SummaryMatch> matches, String query, QueryAnalysis analysis) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("User Query: ").append(query).append("\n\n");
-        prompt.append("Context and Requirements:\n");
+
+        // Add relevant context if available
+        if (analysis.getTimeframe() != null || analysis.getRequiredFields() != null || analysis.isRequiresAggregation()) {
+            prompt.append("Context:\n");
+            if (analysis.getTimeframe() != null) {
+                prompt.append("- Time Period: ").append(analysis.getTimeframe()).append("\n");
+            }
+            if (analysis.getRequiredFields() != null && !analysis.getRequiredFields().isEmpty()) {
+                prompt.append("- Required Info: ").append(String.join(", ", analysis.getRequiredFields())).append("\n");
+            }
+            if (analysis.isRequiresAggregation()) {
+                prompt.append("- Needs Aggregation: Yes\n");
+            }
+            prompt.append("\n");
+        }
         
-        if (analysis.getTimeframe() != null) {
-            prompt.append("- Time Period: ").append(analysis.getTimeframe()).append("\n");
-        }
-        if (analysis.getRequiredFields() != null && !analysis.getRequiredFields().isEmpty()) {
-            prompt.append("- Required Information: ").append(String.join(", ", analysis.getRequiredFields())).append("\n");
-        }
-        if (analysis.isRequiresAggregation()) {
-            prompt.append("- Aggregation Required: Yes\n");
-        }
-        
-        prompt.append("\nAvailable Data:\n");
+        // Add available data
+        prompt.append("Available Data:\n");
         matches.forEach(match -> {
             prompt.append("---\n");
             prompt.append("Employee: ").append(match.employeeId()).append("\n");
-            prompt.append("Relevance Score: ").append(String.format("%.2f", match.similarity())).append("\n");
-            prompt.append("Data: ").append(match.summary()).append("\n\n");
+            prompt.append("Data: ").append(match.summary()).append("\n");
         });
-        prompt.append("\nResponse Format Instructions:\n");
-        prompt.append("1. Structure your response with these sections:\n");
-        prompt.append("   a. SUMMARY: 2-3 sentence overview\n");
-        prompt.append("   b. KEY_DETAILS: Bullet points of key info\n");
-        prompt.append("   c. SPECIFICS: Detailed info by category\n");
-        prompt.append("   d. METRICS: Relevant numbers or stats\n");
-        prompt.append("   e. TIMELINE: Time-based events if applicable\n\n");
-        
-        prompt.append("2. Formatting:\n");
-        prompt.append("   - Use ### for section headers\n");
-        prompt.append("   - Use • for bullets\n");
-        prompt.append("   - Use --- to separate items in categories\n");
-        prompt.append("   - Present numbers clearly\n");
-        prompt.append("   - Keep sentences concise\n\n");
-        
-        prompt.append("3. Example:\n");
-        prompt.append("### SUMMARY\n");
-        prompt.append("<2-3 sentences>\n\n");
-        prompt.append("### KEY_DETAILS\n");
-        prompt.append("• Point 1\n");
-        prompt.append("• Point 2\n\n");
-        prompt.append("### SPECIFICS\n");
-        prompt.append("Category 1:\n");
-        prompt.append("• Detail 1\n");
-        prompt.append("• Detail 2\n");
-        prompt.append("---\n");
-        prompt.append("Category 2:\n");
-        prompt.append("• Detail 3\n\n");
-        prompt.append("### METRICS\n");
-        prompt.append("• Metric 1: value\n\n");
-        prompt.append("### TIMELINE\n");
-        prompt.append("• Time 1: event\n\n");
-        
-        prompt.append("4. Guidelines:\n");
-        prompt.append("   - Include specific details (timestamps, URLs, etc.)\n");
-        prompt.append("   - For security, include threat types and URLs\n");
-        prompt.append("   - For app usage, include durations and categories\n");
-        prompt.append("   - Omit sections if not relevant\n");
+
+        // Simple formatting instructions
+        prompt.append("""
+            
+            Format your response with these sections:
+            ### SUMMARY
+            2-3 sentence overview
+            
+            ### KEY_DETAILS
+            • Important points as bullets
+            
+            ### SPECIFICS
+            Details by category with bullets
+            
+            ### METRICS
+            Numbers and stats if relevant
+            
+            ### TIMELINE
+            Time-based events if applicable
+            
+            Note: Use ### for headers, • for bullets, keep it concise, and skip sections if not relevant.
+            """);
         
         return prompt.toString();
     }
