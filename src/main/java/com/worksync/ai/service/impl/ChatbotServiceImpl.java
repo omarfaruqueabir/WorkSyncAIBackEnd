@@ -150,19 +150,25 @@ public class ChatbotServiceImpl implements ChatbotService {
         return switch (queryType) {
             case ANALYTICAL, STATISTICAL -> 
                 "You are a data analysis expert specializing in employee activity data. " +
-                "Provide detailed statistical analysis and insights from the data.";
+                "Present your analysis in a clear, structured format with sections for Summary, Key Details, " +
+                "Specifics, Metrics, and Timeline. Focus on extracting and organizing specific data points " +
+                "in a way that's easy to read and understand.";
             case TEMPORAL -> 
-                "You are a temporal data analysis expert. Focus on time-based patterns " +
-                "and trends in employee activities.";
+                "You are a temporal data analysis expert. Organize your findings chronologically " +
+                "with clear sections for Summary, Key Details, Specifics, Metrics, and Timeline. " +
+                "Emphasize time-based patterns and present events in a clear sequence.";
             case COMPARATIVE -> 
-                "You are a comparative analysis expert. Focus on comparing different " +
-                "aspects of employee activities and highlighting key differences.";
+                "You are a comparative analysis expert. Structure your comparison with sections " +
+                "for Summary, Key Details, Specifics, Metrics, and Timeline. Present differences " +
+                "and similarities in a clear, parallel format.";
             case AGGREGATIVE -> 
-                "You are a data aggregation expert. Combine and summarize employee " +
-                "activity data to provide meaningful insights.";
+                "You are a data aggregation expert. Present aggregated data in organized sections " +
+                "for Summary, Key Details, Specifics, Metrics, and Timeline. Focus on clear presentation " +
+                "of combined metrics and trends.";
             default -> 
                 "You are an expert AI assistant for employee monitoring and security analysis. " +
-                "Extract and present specific information from employee activity summaries.";
+                "Present information in clear sections for Summary, Key Details, Specifics, Metrics, " +
+                "and Timeline. Focus on extracting and organizing specific information in a structured format.";
         };
     }
 
@@ -189,13 +195,49 @@ public class ChatbotServiceImpl implements ChatbotService {
             prompt.append("Data: ").append(match.summary()).append("\n\n");
         });
 
-        prompt.append("\nInstructions:\n");
-        prompt.append("1. Extract SPECIFIC information from the summaries\n");
-        prompt.append("2. Include exact details (timestamps, durations, app names, URLs)\n");
-        prompt.append("3. Format the response clearly with sections and bullet points\n");
-        prompt.append("4. If comparing data, highlight key differences\n");
-        prompt.append("5. For security events, include all relevant threat details\n");
-        prompt.append("6. Provide concrete examples from the data\n");
+        prompt.append("\nResponse Format Instructions:\n");
+        prompt.append("1. Structure your response in the following sections:\n");
+        prompt.append("   a. SUMMARY: A 2-3 sentence overview of the findings\n");
+        prompt.append("   b. KEY_DETAILS: Bullet points of the most important information\n");
+        prompt.append("   c. SPECIFICS: Detailed information organized by category\n");
+        prompt.append("   d. METRICS: Any relevant numbers, durations, or statistics\n");
+        prompt.append("   e. TIMELINE: Time-based information if relevant\n\n");
+        
+        prompt.append("2. Format Rules:\n");
+        prompt.append("   - Use ### to denote section headers\n");
+        prompt.append("   - Use • for bullet points\n");
+        prompt.append("   - Use --- for separating different items in the same category\n");
+        prompt.append("   - Present numbers and metrics in a clear, readable format\n");
+        prompt.append("   - Keep sentences concise and direct\n\n");
+        
+        prompt.append("3. Example Format:\n");
+        prompt.append("### SUMMARY\n");
+        prompt.append("<2-3 clear sentences>\n\n");
+        prompt.append("### KEY_DETAILS\n");
+        prompt.append("• Key point 1\n");
+        prompt.append("• Key point 2\n\n");
+        prompt.append("### SPECIFICS\n");
+        prompt.append("Category 1:\n");
+        prompt.append("• Detail 1\n");
+        prompt.append("• Detail 2\n");
+        prompt.append("---\n");
+        prompt.append("Category 2:\n");
+        prompt.append("• Detail 3\n");
+        prompt.append("• Detail 4\n\n");
+        prompt.append("### METRICS\n");
+        prompt.append("• Metric 1: value\n");
+        prompt.append("• Metric 2: value\n\n");
+        prompt.append("### TIMELINE\n");
+        prompt.append("• Time 1: event\n");
+        prompt.append("• Time 2: event\n\n");
+        
+        prompt.append("4. Content Guidelines:\n");
+        prompt.append("   - Extract and present SPECIFIC information from the data\n");
+        prompt.append("   - Include exact details (timestamps, durations, app names, URLs)\n");
+        prompt.append("   - For security events, include threat types and URLs\n");
+        prompt.append("   - For application usage, include durations and categories\n");
+        prompt.append("   - Present metrics in a clear, comparable format\n");
+        prompt.append("   - If certain sections are not relevant, omit them\n");
         
         return prompt.toString();
     }
