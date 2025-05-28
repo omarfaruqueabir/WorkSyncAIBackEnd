@@ -201,6 +201,7 @@ public class ChatbotServiceImpl implements ChatbotService {
             4. For ID/name queries, only return the specific ID or name
             5. For usage queries, only return the specific usage asked about
             6. Skip sections that aren't relevant to the specific query
+            7. Include relevant graph when data can be visualized
 
             Format your response using these sections only if relevant to the query:
             ### SUMMARY
@@ -214,6 +215,57 @@ public class ChatbotServiceImpl implements ChatbotService {
 
             ### TIMELINE
             Only if time-based information was requested
+
+            ### GRAPH
+            If data can be visualized, include a Mermaid.js graph. Choose the appropriate type:
+
+            1. For application usage/time distribution:
+            ```mermaid
+            graph TD
+            title[Application Usage Time]
+            barchart
+                title Application Usage Distribution
+                x-axis [Applications] Chrome "VS Code" Postman Teams
+                y-axis [Minutes] 0 --> 60
+                bar [Usage Time] 45 30 15 10
+            ```
+
+            2. For time-series data:
+            ```mermaid
+            graph TD
+            title[Activity Over Time]
+            xychart-beta
+                title Activity Timeline
+                x-axis [Time] 9AM 10AM 11AM 12PM
+                y-axis [Events] 0 --> 10
+                line [Events] 2 5 3 8
+            ```
+
+            3. For comparisons:
+            ```mermaid
+            pie
+                title Activity Distribution
+                "Chrome" : 45
+                "VS Code" : 30
+                "Postman" : 15
+                "Teams" : 10
+            ```
+
+            4. For security events:
+            ```mermaid
+            graph TD
+                title[Security Events]
+                A[Total Events] --> B[High Priority]
+                A --> C[Medium Priority]
+                A --> D[Low Priority]
+                B --> E[Blocked: 5]
+                C --> F[Warned: 3]
+                D --> G[Logged: 2]
+            ```
+
+            Choose the most appropriate graph type based on the data and query type.
+            Include actual values from the data in the graph.
+            Only include one graph unless specifically asked for multiple.
             """);
         
         return prompt.toString();
