@@ -194,50 +194,44 @@ public class ChatbotServiceImpl implements ChatbotService {
             prompt.append("Relevance Score: ").append(String.format("%.2f", match.similarity())).append("\n");
             prompt.append("Data: ").append(match.summary()).append("\n\n");
         });
-
         prompt.append("\nResponse Format Instructions:\n");
-        prompt.append("1. Structure your response in the following sections:\n");
-        prompt.append("   a. SUMMARY: A 2-3 sentence overview of the findings\n");
-        prompt.append("   b. KEY_DETAILS: Bullet points of the most important information\n");
-        prompt.append("   c. SPECIFICS: Detailed information organized by category\n");
-        prompt.append("   d. METRICS: Any relevant numbers, durations, or statistics\n");
-        prompt.append("   e. TIMELINE: Time-based information if relevant\n\n");
+        prompt.append("1. Structure your response with these sections:\n");
+        prompt.append("   a. SUMMARY: 2-3 sentence overview\n");
+        prompt.append("   b. KEY_DETAILS: Bullet points of key info\n");
+        prompt.append("   c. SPECIFICS: Detailed info by category\n");
+        prompt.append("   d. METRICS: Relevant numbers or stats\n");
+        prompt.append("   e. TIMELINE: Time-based events if applicable\n\n");
         
-        prompt.append("2. Format Rules:\n");
-        prompt.append("   - Use ### to denote section headers\n");
-        prompt.append("   - Use • for bullet points\n");
-        prompt.append("   - Use --- for separating different items in the same category\n");
-        prompt.append("   - Present numbers and metrics in a clear, readable format\n");
-        prompt.append("   - Keep sentences concise and direct\n\n");
+        prompt.append("2. Formatting:\n");
+        prompt.append("   - Use ### for section headers\n");
+        prompt.append("   - Use • for bullets\n");
+        prompt.append("   - Use --- to separate items in categories\n");
+        prompt.append("   - Present numbers clearly\n");
+        prompt.append("   - Keep sentences concise\n\n");
         
-        prompt.append("3. Example Format:\n");
+        prompt.append("3. Example:\n");
         prompt.append("### SUMMARY\n");
-        prompt.append("<2-3 clear sentences>\n\n");
+        prompt.append("<2-3 sentences>\n\n");
         prompt.append("### KEY_DETAILS\n");
-        prompt.append("• Key point 1\n");
-        prompt.append("• Key point 2\n\n");
+        prompt.append("• Point 1\n");
+        prompt.append("• Point 2\n\n");
         prompt.append("### SPECIFICS\n");
         prompt.append("Category 1:\n");
         prompt.append("• Detail 1\n");
         prompt.append("• Detail 2\n");
         prompt.append("---\n");
         prompt.append("Category 2:\n");
-        prompt.append("• Detail 3\n");
-        prompt.append("• Detail 4\n\n");
+        prompt.append("• Detail 3\n\n");
         prompt.append("### METRICS\n");
-        prompt.append("• Metric 1: value\n");
-        prompt.append("• Metric 2: value\n\n");
+        prompt.append("• Metric 1: value\n\n");
         prompt.append("### TIMELINE\n");
-        prompt.append("• Time 1: event\n");
-        prompt.append("• Time 2: event\n\n");
+        prompt.append("• Time 1: event\n\n");
         
-        prompt.append("4. Content Guidelines:\n");
-        prompt.append("   - Extract and present SPECIFIC information from the data\n");
-        prompt.append("   - Include exact details (timestamps, durations, app names, URLs)\n");
-        prompt.append("   - For security events, include threat types and URLs\n");
-        prompt.append("   - For application usage, include durations and categories\n");
-        prompt.append("   - Present metrics in a clear, comparable format\n");
-        prompt.append("   - If certain sections are not relevant, omit them\n");
+        prompt.append("4. Guidelines:\n");
+        prompt.append("   - Include specific details (timestamps, URLs, etc.)\n");
+        prompt.append("   - For security, include threat types and URLs\n");
+        prompt.append("   - For app usage, include durations and categories\n");
+        prompt.append("   - Omit sections if not relevant\n");
         
         return prompt.toString();
     }
